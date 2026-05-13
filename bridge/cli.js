@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, execFileSync } = require('node:child_process');
 const { createBridgeServer } = require('./server');
 const { summarizeUrl } = require('./summarizer');
 
@@ -13,6 +13,7 @@ function usage() {
 
 Usage:
   readlens serve [--port 8765] [--store .agent-reader-bridge.json]
+  readlens stop [--port 8765]
   readlens put <summary.json> [--port 8765]
   readlens get <url> [--port 8765]
   readlens summarize <url> [--port 8765] [--alias <url>] [--no-open]
@@ -77,6 +78,47 @@ async function ensureBridgeRunning(port) {
   }
 
   throw new Error(`ReadLens bridge did not start at http://127.0.0.1:${port}. See ${logPath}`);
+}
+
+function findListeningPids(port) {
+  try {
+    const output = execFileSync('lsof', ['-tiTCP:' + String(port), '-sTCP:LISTEN'], { encoding: 'utf8' });
+    return output.split(/\s+/)
+      .map((value) => Number(value))
+      .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid);
+  } catch (_error) {
+    return [];
+  }
+}
+
+async function waitForBridgeStopped(port) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (!(await isBridgeRunning(port))) return true;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return false;
+}
+
+async function stopBridge(port) {
+  const pids = findListeningPids(port);
+  if (pids.length === 0) {
+    console.log(`ReadLens bridge is not running on http://127.0.0.1:${port}`);
+    return;
+  }
+
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 'SIGTERM');
+    } catch (_error) {
+      // The process may have already exited between lsof and kill.
+    }
+  }
+
+  if (!(await waitForBridgeStopped(port))) {
+    throw new Error(`ReadLens bridge did not stop on http://127.0.0.1:${port}. PIDs: ${pids.join(', ')}`);
+  }
+
+  console.log(`ReadLens bridge stopped on http://127.0.0.1:${port}. PIDs: ${pids.join(', ')}`);
 }
 
 async function putSummaryData(summary, port) {
@@ -161,6 +203,11 @@ async function main() {
       console.log(`ReadLens bridge listening on http://127.0.0.1:${port}`);
       console.log(`Store: ${path.resolve(store)}`);
     });
+    return;
+  }
+
+  if (command === 'stop') {
+    await stopBridge(port);
     return;
   }
 

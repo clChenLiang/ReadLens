@@ -65,6 +65,12 @@ You can still run the bridge manually if you want foreground logs:
 bin/readlens serve
 ```
 
+Stop the local bridge when needed:
+
+```bash
+bin/readlens stop
+```
+
 Use `--no-open` if you only want to generate and store the summary:
 
 ```bash

@@ -149,6 +149,12 @@ Start bridge manually if needed:
 readlens serve
 ```
 
+Stop bridge manually if needed:
+
+```bash
+readlens stop
+```
+
 Health check:
 
 ```bash
