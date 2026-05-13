@@ -1,0 +1,116 @@
+{
+  "url": "https://www.reddit.com/r/hermesagent/",
+  "aliases": [
+    "https://www.reddit.com/r/hermesagent",
+    "https://old.reddit.com/r/hermesagent/",
+    "https://old.reddit.com/r/hermesagent",
+    "https://reddit.com/r/hermesagent/",
+    "https://reddit.com/r/hermesagent"
+  ],
+  "title": "r/hermesagent 页面解读",
+  "summary": "这个 subreddit 当前更像 Hermes Agent 用户的实战交流区，而不是单纯的项目公告页。首页讨论集中在几个方向：新用户如何快速理解 Hermes、Telegram/WebUI/移动端等交互入口是否好用、Obsidian/Profiles/Workspaces/浏览器控制等工具集成、非技术用户的安装和使用挫折、以及模型选择、编码任务该由 Hermes 直接做还是交给 Claude Code/OpenCode 等专用 harness。整体信号是：社区已经从“能不能跑起来”进入到“怎么把 Hermes 嵌进真实工作流”的阶段。",
+  "keyPoints": [
+    {
+      "id": "point-1",
+      "claim": "首页首先呈现的是社区整理和知识沉淀需求，而不只是零散提问。",
+      "explanation": "置顶帖在征集下一个 megathread 主题，说明社区希望把近一个月的问答聚合成可复用入口，降低新成员搜索成本。",
+      "evidence": [
+        {
+          "quote": "Pick the next megathread topic",
+          "confidence": 0.98
+        },
+        {
+          "quote": "For new members a megathread is a scraping of our community posts over the last month",
+          "confidence": 0.9
+        }
+      ]
+    },
+    {
+      "id": "point-2",
+      "claim": "Telegram 是 Hermes 使用场景里的重要入口，社区在讨论如何把会话拆成更清晰的线程。",
+      "explanation": "置顶教程讲 Telegram DM 的 threaded messages，反映 Hermes 用户会遇到多任务、多会话管理问题。",
+      "evidence": [
+        {
+          "quote": "Tutorial: Threaded Messages on Telegram DM",
+          "confidence": 0.98
+        },
+        {
+          "quote": "separates your \"sessions\" with Hermes in different topics",
+          "confidence": 0.9
+        }
+      ]
+    },
+    {
+      "id": "point-3",
+      "claim": "非技术用户最关心的是 Hermes 是否足够方便、是否像 ChatGPT 一样容易上手。",
+      "explanation": "首页有明确面向非技术用户的提问，说明 Hermes 的产品化门槛和 UI/UX 仍是关键讨论点。",
+      "evidence": [
+        {
+          "quote": "Is Hermes convenient and quick to use? Does it have good UI UX? Is it worth it ?",
+          "confidence": 0.98
+        },
+        {
+          "quote": "Asking as a non technical",
+          "confidence": 0.95
+        }
+      ]
+    },
+    {
+      "id": "point-4",
+      "claim": "很多用户正在把 Hermes 和个人知识库、工具调用、工作区等真实工作流拼接起来。",
+      "explanation": "Obsidian、profiles、workspaces、memory、tool calling 等话题说明社区重点不只是聊天，而是长期上下文和多工具协同。",
+      "evidence": [
+        {
+          "quote": "Obsidian + Hermes Agent = ?",
+          "confidence": 0.98
+        },
+        {
+          "quote": "How are you using profiles and workspaces?",
+          "confidence": 0.98
+        },
+        {
+          "quote": "Why do i need it if Hermes has inbuilt memory?",
+          "confidence": 0.9
+        }
+      ]
+    },
+    {
+      "id": "point-5",
+      "claim": "安装、CLI、配置和期望管理仍然是社区痛点。",
+      "explanation": "有用户描述初次体验挫折，也有帖子询问模型、终端、移动 UI 等配套选择，说明 Hermes 使用链路还依赖不少外围决策。",
+      "evidence": [
+        {
+          "quote": "My frustrating experience with Hermes",
+          "confidence": 0.98
+        },
+        {
+          "quote": "I am not a dev, I don’t necessarily like CLIs",
+          "confidence": 0.9
+        },
+        {
+          "quote": "Please recommend a cheap paid model, MiniMax dumbness is getting on my nerves",
+          "confidence": 0.98
+        }
+      ]
+    },
+    {
+      "id": "point-6",
+      "claim": "社区在探索 Hermes 的边界：它是总控 agent，还是应该把编码、浏览器控制等任务转交给专用工具。",
+      "explanation": "首页同时出现 coding harness、browser relay、移动 UI、食物计划和购物自动化等帖子，说明用户正在寻找 Hermes 在复杂自动化里的最佳分工。",
+      "evidence": [
+        {
+          "quote": "Do you have Hermes handle coding or defer to a coding harness",
+          "confidence": 0.98
+        },
+        {
+          "quote": "Any openclaw Browser relay alternative for Hermes?",
+          "confidence": 0.98
+        },
+        {
+          "quote": "Who’s automated their food planning and shopping with Hermes?",
+          "confidence": 0.98
+        }
+      ]
+    }
+  ]
+}

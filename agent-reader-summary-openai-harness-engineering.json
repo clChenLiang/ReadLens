@@ -1,0 +1,126 @@
+{
+  "url": "https://openai.com/zh-Hans-CN/index/harness-engineering/",
+  "aliases": [
+    "https://openai.com/zh-Hans-CN/index/harness-engineering",
+    "https://openai.com/index/harness-engineering/",
+    "https://openai.com/index/harness-engineering"
+  ],
+  "title": "《工程技术：在智能体优先的世界中利用 Codex》解读",
+  "summary": "这篇文章不是在讲“用 AI 写一点代码”，而是在讲一种新的工程组织方式：当代码几乎全部由 Codex 生成时，人类工程师的核心工作会从手写实现，转向设计环境、约束、文档、反馈回路和控制系统。文章的关键词是 harness engineering：把仓库、工具、CI、可观测性、浏览器、文档、lint、评审和垃圾回收流程都改造成智能体可读、可执行、可验证的系统。它的核心判断是：智能体优先的软件开发并不会降低工程纪律，反而要求把纪律更多编码进系统本身。",
+  "keyPoints": [
+    {
+      "id": "point-1",
+      "claim": "这次实验的关键不是 Codex 参与写代码，而是代码库被设定为“不得人工手写代码”。",
+      "explanation": "文章开头用一个极端约束定义实验边界：内部 beta 产品经历交付、部署、故障和修复，但应用逻辑、测试、CI、文档、可观测性和内部工具都由 Codex 编写。这个约束迫使团队去建设智能体可工作的环境。",
+      "evidence": [
+        {
+          "quote": "其中没有一行代码是人工编写的",
+          "confidence": 0.98
+        },
+        {
+          "quote": "每一行代码 — 从应用逻辑、测试、CI 配置、文档、可观察性到内部工具 — 全都是由 Codex 编写的",
+          "confidence": 0.95
+        },
+        {
+          "quote": "人类掌舵。智能体执行。",
+          "confidence": 0.98
+        }
+      ]
+    },
+    {
+      "id": "point-2",
+      "claim": "工程师角色被重定义：重点从亲自编码转向设计系统、架构和杠杆。",
+      "explanation": "当人不能直接写代码时，真正的工作变成让 Codex 能可靠完成工作：拆任务、补工具、明确能力边界、把评审和反馈循环交给智能体执行。",
+      "evidence": [
+        {
+          "quote": "工程师工作的重点转向了系统、架构和杠杆作用",
+          "confidence": 0.98
+        },
+        {
+          "quote": "我们工程团队的主要任务成了协助智能体完成有用的工作",
+          "confidence": 0.95
+        },
+        {
+          "quote": "人类几乎完全通过提示与系统交互",
+          "confidence": 0.95
+        }
+      ]
+    },
+    {
+      "id": "point-3",
+      "claim": "要提高智能体产能，必须让应用、日志、指标、追踪和浏览器行为都变得可读、可操作。",
+      "explanation": "文章强调瓶颈会从写代码变成人工 QA，因此团队把 Chrome DevTools、DOM 快照、截图、导航、LogQL、PromQL 等能力接给 Codex，让它自己复现、观测、验证和循环修复。",
+      "evidence": [
+        {
+          "quote": "我们的瓶颈变成了人工 QA 能力",
+          "confidence": 0.95
+        },
+        {
+          "quote": "使 Codex 能够复现错误、验证修复，并直接推理 UI 的行为",
+          "confidence": 0.98
+        },
+        {
+          "quote": "智能体可以使用 LogQL 查询日志，使用 PromQL 查询指标",
+          "confidence": 0.95
+        }
+      ]
+    },
+    {
+      "id": "point-4",
+      "claim": "代码仓库要成为智能体的记录系统：AGENTS.md 不是百科全书，而是地图。",
+      "explanation": "长指令文件会浪费上下文、腐烂、难以验证；更好的方式是把知识拆进版本化 docs、执行计划、质量文档和可检查结构里，让智能体渐进式发现上下文。",
+      "evidence": [
+        {
+          "quote": "要给 Codex 的是一张地图，而不是一本 1,000 页的说明书",
+          "confidence": 0.98
+        },
+        {
+          "quote": "AGENTS.md 视为 内容目录",
+          "confidence": 0.92
+        },
+        {
+          "quote": "渐进式披露",
+          "confidence": 0.9
+        }
+      ]
+    },
+    {
+      "id": "point-5",
+      "claim": "智能体优先架构需要把品味和边界编码成可机械执行的约束。",
+      "explanation": "文章并不鼓励放任智能体自由生成，而是强调分层架构、自定义 linter、结构测试、日志规范、文件大小限制等。对人类来说可能显得繁琐，但对高吞吐智能体来说是速度不漂移的前提。",
+      "evidence": [
+        {
+          "quote": "通过强制执行不变量，而非对实施过程进行微观管理",
+          "confidence": 0.98
+        },
+        {
+          "quote": "这些约束是通过自定义的 linter（当然是由 Codex 生成的！）和结构测试机械地强制执行的",
+          "confidence": 0.96
+        },
+        {
+          "quote": "有了智能体，它们就成了倍增器",
+          "confidence": 0.95
+        }
+      ]
+    },
+    {
+      "id": "point-6",
+      "claim": "文章最后的结论是：软件工程仍需要纪律，只是纪律从手写代码迁移到了环境、反馈回路和控制系统。",
+      "explanation": "这也是对 harness engineering 的总结：随着智能体承担更多软件生命周期，团队真正要投入的是可维护的支撑结构，而不是一次性的提示技巧。",
+      "evidence": [
+        {
+          "quote": "构建软件仍然需要纪律，但纪律更多地体现在支撑结构上，而不是代码上",
+          "confidence": 0.98
+        },
+        {
+          "quote": "保持代码库一致性的工具、抽象和反馈回路变得越发重要",
+          "confidence": 0.95
+        },
+        {
+          "quote": "设计环境、反馈回路和控制系统方面",
+          "confidence": 0.95
+        }
+      ]
+    }
+  ]
+}

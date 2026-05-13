@@ -1,0 +1,40 @@
+{
+  "url": "file:///Users/bytedance/Documents/Codex/2026-05-13/agent-1-agent-ai-2-agent/fixtures/sample-article.html",
+  "title": "Agent 与网页阅读：示例解读",
+  "summary": "这篇示例文章说明了浏览器插件如何把 Agent 的总结与网页原文关联起来：Agent 负责理解和生成结构化数据，插件负责展示总结、标注引用，并帮助用户在原文和解读之间跳转。",
+  "keyPoints": [
+    {
+      "id": "division-of-labor",
+      "claim": "Agent 和插件应该分工明确。",
+      "explanation": "Agent 处理理解和总结，插件处理可视化和页面内定位，这样第一版不需要 AI API 也能跑起来。",
+      "evidence": [
+        {
+          "quote": "Agent 负责理解页面并输出结构化解读数据，浏览器插件负责把这些数据渲染回原网页。",
+          "confidence": 0.92
+        }
+      ]
+    },
+    {
+      "id": "quote-anchoring",
+      "claim": "第一版用 quote 做锚定比依赖 DOM selector 更现实。",
+      "explanation": "外部 Agent 不一定拿得到稳定 DOM 位置，但通常能输出原文短句。插件可以在当前页面中查找这些短句。",
+      "evidence": [
+        {
+          "quote": "第一版不要求 Agent 提供精确 DOM selector，只要求它提供尽量短且准确的原文 quote。",
+          "confidence": 0.86
+        }
+      ]
+    },
+    {
+      "id": "interaction",
+      "claim": "点击总结点应该能回到原文。",
+      "explanation": "这能让解读不是脱离上下文的摘要，而是和页面证据互相连接。",
+      "evidence": [
+        {
+          "quote": "用户点击某个关键点时，页面会滚动到对应的原文高亮位置。",
+          "confidence": 0.88
+        }
+      ]
+    }
+  ]
+}

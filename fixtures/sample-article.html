@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>Agent 与网页阅读示例文章</title>
+    <style>
+      body { max-width: 760px; margin: 48px auto; padding: 0 24px; font: 18px/1.75 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172033; }
+      h1 { line-height: 1.25; }
+      p { margin: 22px 0; }
+    </style>
+  </head>
+  <body>
+    <article>
+      <h1>Agent 与网页阅读示例文章</h1>
+      <p>当用户把一个链接交给 Agent 时，Agent 可以先打开页面，阅读正文，并判断哪些信息值得解释。</p>
+      <p>Agent 负责理解页面并输出结构化解读数据，浏览器插件负责把这些数据渲染回原网页。</p>
+      <p>第一版不要求 Agent 提供精确 DOM selector，只要求它提供尽量短且准确的原文 quote。</p>
+      <p>插件拿到 quote 后，会在当前页面文本节点里查找匹配内容，并给找到的句子加上临时高亮。</p>
+      <p>用户点击某个关键点时，页面会滚动到对应的原文高亮位置。</p>
+    </article>
+  </body>
+</html>

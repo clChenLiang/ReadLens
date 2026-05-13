@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>ReadLens</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="popup-shell">
+      <header>
+        <h1>ReadLens</h1>
+        <p>粘贴 Agent 生成的解读 JSON，在当前网页展示总结和原文标注。</p>
+      </header>
+      <label for="agent-json">Agent JSON</label>
+      <textarea id="agent-json" spellcheck="false" placeholder='{"summary":"...","keyPoints":[{"claim":"...","evidence":[{"quote":"..."}]}]}'></textarea>
+      <div class="actions">
+        <button id="render" type="button">渲染到页面</button>
+        <button id="load-bridge" type="button" class="secondary">从 Agent Bridge 加载</button>
+        <button id="clear" type="button" class="secondary">清除</button>
+      </div>
+      <p id="status" role="status"></p>
+    </main>
+    <script src="agentSchema.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

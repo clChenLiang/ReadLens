@@ -1,0 +1,5 @@
+.DS_Store
+.agent-reader-bridge.json
+.agent-reader-bridge.log
+node_modules/
+dist/release-work/

@@ -1,0 +1,19 @@
+{
+  "name": "readlens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check extension/src/agentSchema.js && node --check extension/src/quoteMatcher.js && node --check extension/src/content.js && node --check extension/src/popup.js && node --check bridge/server.js && node --check bridge/cli.js && bash -n bin/agent-reader",
+    "bridge": "node bridge/cli.js serve",
+    "bridge:put": "node bridge/cli.js put",
+    "bridge:get": "node bridge/cli.js get",
+    "agent-reader": "bin/agent-reader",
+    "readlens": "bin/readlens"
+  },
+  "bin": {
+    "readlens": "bin/readlens",
+    "agent-reader": "bin/agent-reader"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "ReadLens",
+  "description": "Render Agent-generated summaries and quote-linked highlights on the original webpage.",
+  "version": "0.1.0",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "action": {
+    "default_title": "ReadLens",
+    "default_popup": "src/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/quoteMatcher.js",
+        "src/agentSchema.js",
+        "src/content.js"
+      ],
+      "css": [
+        "src/content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
