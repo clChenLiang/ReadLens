@@ -5,6 +5,7 @@
   const { validateAgentSummary } = globalThis.AgentReaderSchema;
   const { findQuoteInText } = globalThis.AgentReaderQuoteMatcher;
   const BRIDGE_BASE_URL = 'http://127.0.0.1:8765';
+  const SVG_NS = 'http://www.w3.org/2000/svg';
   const state = {
     launcher: null,
     panel: null,
@@ -148,6 +149,45 @@
     return button;
   }
 
+  function createSvgElement(tag, attrs = {}) {
+    const element = document.createElementNS(SVG_NS, tag);
+    Object.entries(attrs).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      element.setAttribute(key, String(value));
+    });
+    return element;
+  }
+
+  function truncateText(value, maxLength) {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, Math.max(0, maxLength - 1))}…`;
+  }
+
+  function positionMapTooltip(event, tooltip, container) {
+    const rect = container.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const x = Math.min(Math.max(event.clientX - rect.left + 14, 10), Math.max(10, rect.width - tooltipRect.width - 10));
+    const y = Math.min(Math.max(event.clientY - rect.top + 14, 10), Math.max(10, rect.height - tooltipRect.height - 10));
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${y}px`;
+  }
+
+  function setMapTooltipContent(tooltip, point, matchedCount) {
+    tooltip.textContent = '';
+    const title = document.createElement('strong');
+    title.textContent = point.claim || '未命名关键点';
+    const detail = document.createElement('p');
+    detail.textContent = point.explanation || '没有补充解释。';
+    const quote = document.createElement('blockquote');
+    quote.textContent = point.evidence && point.evidence[0] && point.evidence[0].quote
+      ? `“${truncateText(point.evidence[0].quote, 96)}”`
+      : '暂无原文 quote';
+    const meta = document.createElement('span');
+    meta.textContent = matchedCount > 0 ? `已关联 ${matchedCount} 处原文，点击跳转` : '未匹配到原文引用';
+    tooltip.append(title, detail, quote, meta);
+  }
+
   function ensureLauncher() {
     if (state.launcher && state.launcher.isConnected) return state.launcher;
 
@@ -219,16 +259,20 @@
 
     const mapView = document.createElement('div');
     mapView.className = 'agent-reader-view agent-reader-map';
-    const center = document.createElement('button');
-    center.type = 'button';
-    center.className = 'agent-reader-map-center';
-    center.innerHTML = '<span>总览</span>';
-    const centerText = document.createElement('p');
-    centerText.textContent = summary.summary;
-    center.append(centerText);
-    const mapPoints = document.createElement('div');
-    mapPoints.className = 'agent-reader-map-points';
-    mapView.append(center, mapPoints);
+    const mapFrame = document.createElement('div');
+    mapFrame.className = 'agent-reader-map-frame';
+    const mapSvg = document.createElementNS(SVG_NS, 'svg');
+    mapSvg.setAttribute('class', 'agent-reader-map-svg');
+    mapSvg.setAttribute('viewBox', '0 0 380 320');
+    mapSvg.setAttribute('role', 'img');
+    mapSvg.setAttribute('aria-label', 'ReadLens knowledge map');
+    const mapLinks = createSvgElement('g', { class: 'agent-reader-map-links' });
+    const mapNodes = createSvgElement('g', { class: 'agent-reader-map-nodes' });
+    mapSvg.append(mapLinks, mapNodes);
+    const mapTooltip = document.createElement('div');
+    mapTooltip.className = 'agent-reader-tooltip agent-reader-tooltip-hidden';
+    mapFrame.append(mapSvg, mapTooltip);
+    mapView.append(mapFrame);
 
     const textView = document.createElement('div');
     textView.className = 'agent-reader-view agent-reader-text agent-reader-hidden';
@@ -244,20 +288,7 @@
       const matchedCount = (matchesByPoint.get(point.id) || []).length;
       if (matchedCount === 0) unmatchedCount += 1;
 
-      const mapPoint = createButton('', 'agent-reader-map-point agent-reader-point');
-      mapPoint.dataset.agentReaderPointId = point.id;
-      const mapIndex = document.createElement('span');
-      mapIndex.className = 'agent-reader-map-index';
-      mapIndex.textContent = point.id.replace(/^point-/, '#');
-      const mapClaim = document.createElement('strong');
-      mapClaim.textContent = point.claim || '未命名关键点';
-      const mapMeta = document.createElement('small');
-      mapMeta.textContent = matchedCount > 0 ? `关联 ${matchedCount} 处原文` : '未匹配 quote';
-      mapPoint.append(mapIndex, mapClaim, mapMeta);
-      mapPoint.addEventListener('click', () => scrollToPoint(point.id));
-      mapPoints.append(mapPoint);
-
-      const pointButton = createButton('', 'agent-reader-point');
+      const pointButton = createButton('', 'agent-reader-point agent-reader-text-point');
       pointButton.dataset.agentReaderPointId = point.id;
       const claim = document.createElement('p');
       claim.className = 'agent-reader-claim';
@@ -272,6 +303,78 @@
       pointButton.addEventListener('click', () => scrollToPoint(point.id));
       textView.append(pointButton);
     }
+
+    const centerNode = createSvgElement('g', { class: 'agent-reader-map-overview', tabindex: '0' });
+    const centerHalo = createSvgElement('circle', { cx: 190, cy: 74, r: 52, class: 'agent-reader-map-halo' });
+    const centerCircle = createSvgElement('circle', { cx: 190, cy: 74, r: 43, class: 'agent-reader-map-center-node' });
+    const centerLabel = createSvgElement('text', { x: 190, y: 68, 'text-anchor': 'middle', class: 'agent-reader-map-center-label' });
+    centerLabel.textContent = '总览';
+    const centerHint = createSvgElement('text', { x: 190, y: 88, 'text-anchor': 'middle', class: 'agent-reader-map-center-hint' });
+    centerHint.textContent = `${summary.keyPoints.length} 个关键点`;
+    centerNode.append(centerHalo, centerCircle, centerLabel, centerHint);
+    centerNode.addEventListener('mouseenter', (event) => {
+      mapTooltip.textContent = '';
+      const title = document.createElement('strong');
+      title.textContent = summary.title || '页面总览';
+      const detail = document.createElement('p');
+      detail.textContent = summary.summary || '暂无总览。';
+      const meta = document.createElement('span');
+      meta.textContent = '围绕总览展开关键论点';
+      mapTooltip.append(title, detail, meta);
+      mapTooltip.classList.remove('agent-reader-tooltip-hidden');
+      positionMapTooltip(event, mapTooltip, mapFrame);
+    });
+    centerNode.addEventListener('mousemove', (event) => positionMapTooltip(event, mapTooltip, mapFrame));
+    centerNode.addEventListener('mouseleave', () => mapTooltip.classList.add('agent-reader-tooltip-hidden'));
+    mapNodes.append(centerNode);
+
+    const pointCount = Math.max(summary.keyPoints.length, 1);
+    summary.keyPoints.forEach((point, index) => {
+      const matchedCount = (matchesByPoint.get(point.id) || []).length;
+      const angle = Math.PI * (0.18 + (0.64 * index) / Math.max(pointCount - 1, 1));
+      const x = 190 + Math.cos(angle) * 148;
+      const y = 100 + Math.sin(angle) * 154;
+      const link = createSvgElement('path', {
+        class: `agent-reader-map-link ${matchedCount > 0 ? 'agent-reader-map-link-matched' : 'agent-reader-map-link-unmatched'}`,
+        d: `M 190 122 C 190 168, ${x} 146, ${x} ${y - 28}`
+      });
+      mapLinks.append(link);
+
+      const node = createSvgElement('g', {
+        class: `agent-reader-map-node agent-reader-point ${matchedCount > 0 ? 'agent-reader-map-node-matched' : 'agent-reader-map-node-unmatched'}`,
+        tabindex: '0',
+        'data-agent-reader-point-id': point.id,
+        transform: `translate(${x}, ${y})`
+      });
+      const bubble = createSvgElement('circle', { cx: 0, cy: 0, r: 30 });
+      const indexText = createSvgElement('text', { x: 0, y: -4, 'text-anchor': 'middle', class: 'agent-reader-map-node-index' });
+      indexText.textContent = point.id.replace(/^point-/, '#');
+      const metaText = createSvgElement('text', { x: 0, y: 14, 'text-anchor': 'middle', class: 'agent-reader-map-node-meta' });
+      metaText.textContent = matchedCount > 0 ? `${matchedCount} 引用` : '未匹配';
+      const label = createSvgElement('text', {
+        x: 0,
+        y: 46,
+        'text-anchor': 'middle',
+        class: 'agent-reader-map-node-label'
+      });
+      label.textContent = truncateText(point.claim || '未命名关键点', 15);
+      node.append(bubble, indexText, metaText, label);
+      node.addEventListener('mouseenter', (event) => {
+        setMapTooltipContent(mapTooltip, point, matchedCount);
+        mapTooltip.classList.remove('agent-reader-tooltip-hidden');
+        positionMapTooltip(event, mapTooltip, mapFrame);
+      });
+      node.addEventListener('mousemove', (event) => positionMapTooltip(event, mapTooltip, mapFrame));
+      node.addEventListener('mouseleave', () => mapTooltip.classList.add('agent-reader-tooltip-hidden'));
+      node.addEventListener('click', () => scrollToPoint(point.id));
+      node.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          scrollToPoint(point.id);
+        }
+      });
+      mapNodes.append(node);
+    });
 
     if (unmatchedCount > 0) {
       const empty = document.createElement('p');

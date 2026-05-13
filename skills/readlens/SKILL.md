@@ -62,7 +62,7 @@ cat /tmp/readlens-summary.json | readlens put -
 
 ## Browser extension wake flow
 
-If a page has no stored interpretation, the ReadLens floating orb can call the local bridge endpoint `POST /wake-codex`. The bridge opens Terminal and starts Codex with a prompt to use this `readlens` skill for the current URL. After the new Codex session stores JSON via `readlens put -`, the extension polls `/latest` and renders the result.
+If a page has no stored interpretation, the ReadLens floating orb can call the local bridge endpoint `POST /wake-codex`. The bridge opens Terminal and starts a non-interactive `codex exec --skip-git-repo-check -C <readlens-root>` run with a prompt to use this `readlens` skill for the current URL. After the new Codex run stores JSON via `readlens put -`, the extension polls `/latest` and renders the result.
 
 For this to work, the bridge must be running:
 

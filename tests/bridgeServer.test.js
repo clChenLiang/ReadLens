@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createBridgeServer } = require('../bridge/server');
+const { createBridgeServer, buildCodexWakeCommand } = require('../bridge/server');
 
 function sampleSummary(url = 'https://example.com/article') {
   return {
@@ -161,4 +161,17 @@ test('POST /wake-codex rejects missing or unsupported URLs', async () => {
       throw new Error('should not run for invalid URL');
     }
   });
+});
+
+test('Codex wake command runs a non-interactive readlens document parse by default', () => {
+  const command = buildCodexWakeCommand('https://example.com/article', {
+    cwd: '/tmp/readlens',
+    codexBin: '/usr/local/bin/codex'
+  });
+
+  assert.match(command, /codex' exec /, 'wake command should use codex exec so parsing actually starts');
+  assert.match(command, /--skip-git-repo-check/, 'wake command should work from packaged skill directories');
+  assert.match(command, /-C '\/tmp\/readlens'/, 'wake command should set the ReadLens project root');
+  assert.match(command, /使用 readlens skill 总结这个链接/, 'wake prompt should explicitly invoke the readlens skill');
+  assert.match(command, /readlens put -/, 'wake prompt should instruct Codex to write bridge-compatible JSON');
 });

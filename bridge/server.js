@@ -48,9 +48,13 @@ function buildCodexWakeCommand(url, options = {}) {
   const prompt = [
     '使用 readlens skill 总结这个链接：',
     url,
-    '完成后把结果写入 ReadLens bridge，并打开或刷新原网页显示解读。'
+    '请直接完成解析并写入 ReadLens bridge。',
+    '要求：读取页面内容，生成符合 ReadLens JSON contract 的 JSON，包含 url/title/summary/keyPoints/evidence.quote。',
+    'quote 要尽量使用页面中的短原文，方便浏览器插件定位。',
+    '完成后执行：readlens put -，把生成的 JSON 从 stdin 写入本地 bridge。',
+    '如果 readlens 命令不可用，请使用当前仓库的 bin/readlens put -。'
   ].join(' ');
-  return `cd ${shellQuote(cwd)} && ${shellQuote(codexBin)} ${shellQuote(prompt)}`;
+  return `${shellQuote(codexBin)} exec --skip-git-repo-check -C ${shellQuote(cwd)} ${shellQuote(prompt)}`;
 }
 
 function runAppleScript(script) {
