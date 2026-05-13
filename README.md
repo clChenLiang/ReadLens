@@ -43,10 +43,12 @@ What happens:
 4. It PUTs the JSON into `http://127.0.0.1:8765/summary`.
 5. It opens the URL in the browser.
 6. The extension content script auto-requests `http://127.0.0.1:8765/latest?url=<current-page-url>`.
-7. If a matching summary exists, the page shows a blue floating **ReadLens** button.
-8. Click the floating button to render the overlay and quote highlights.
+7. If a matching summary exists, the page shows a top-right ReadLens orb and auto-renders the panel with quote highlights.
+8. The panel supports **图谱 / 文本** modes: the graph view gives a knowledge-map overview, while the text view keeps detailed explanations and source links.
 
-The floating button is intentionally less intrusive than opening the full panel automatically. It also shows useful states: checking, bridge offline, no summary, summary ready, and rendered.
+The floating orb stays in the top-right corner, expands on hover, and uses color to show states: checking, bridge offline, no summary, waking Codex, waiting for a result, summary ready, and rendered.
+
+When the current page has no stored interpretation, click the orb to ask the local bridge to wake Codex in Terminal with a `readlens` skill prompt for the current URL. Keep `bin/readlens serve` running so the extension can call the local bridge. After Codex writes the summary back with `readlens put -`, the extension polls and renders it automatically.
 
 If the readable page URL differs from the URL you entered, store the entered URL as an alias:
 
@@ -144,6 +146,7 @@ See `RELEASE.md` for release artifact details.
 GET /health
 PUT /summary
 GET /latest?url=<url>
+POST /wake-codex
 ```
 
 ## Development

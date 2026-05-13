@@ -60,6 +60,18 @@ cat /tmp/readlens-summary.json | readlens put -
 5. Return a short answer with the normal page link and point jump links.
 6. If the user wants only a quick prototype result, `readlens summarize <url>` is acceptable, but say it is heuristic.
 
+## Browser extension wake flow
+
+If a page has no stored interpretation, the ReadLens floating orb can call the local bridge endpoint `POST /wake-codex`. The bridge opens Terminal and starts Codex with a prompt to use this `readlens` skill for the current URL. After the new Codex session stores JSON via `readlens put -`, the extension polls `/latest` and renders the result.
+
+For this to work, the bridge must be running:
+
+```bash
+readlens serve
+```
+
+If the orb reports that the bridge is offline, start the bridge and click the orb again.
+
 ## JSON contract
 
 ```json

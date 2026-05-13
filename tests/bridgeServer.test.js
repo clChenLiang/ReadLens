@@ -16,8 +16,8 @@ function sampleSummary(url = 'https://example.com/article') {
   };
 }
 
-async function withServer(fn) {
-  const app = createBridgeServer();
+async function withServer(fn, options = {}) {
+  const app = createBridgeServer(options);
   const server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   const { port } = server.address();
@@ -118,5 +118,47 @@ test('GET /latest ignores common tracking params and hash while matching URLs', 
     const body = await response.json();
     assert.equal(body.ok, true);
     assert.equal(body.data.url, input.url);
+  });
+});
+
+test('POST /wake-codex asks the injected wake runner to launch Codex for a URL', async () => {
+  const calls = [];
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/wake-codex`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com/to-read' })
+    });
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.mode, 'terminal');
+    assert.match(body.command, /codex/);
+    assert.deepEqual(calls, [{ url: 'https://example.com/to-read' }]);
+  }, {
+    wakeCodex: async ({ url }) => {
+      calls.push({ url });
+      return { ok: true, mode: 'terminal', command: `codex ${url}` };
+    }
+  });
+});
+
+test('POST /wake-codex rejects missing or unsupported URLs', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/wake-codex`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: 'javascript:alert(1)' })
+    });
+
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.ok, false);
+    assert.match(body.error, /Unsupported URL/i);
+  }, {
+    wakeCodex: async () => {
+      throw new Error('should not run for invalid URL');
+    }
   });
 });

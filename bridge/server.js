@@ -1,6 +1,7 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFile, execFileSync } = require('node:child_process');
 const { validateAgentSummary } = require('../extension/src/agentSchema');
 
 function sendJson(response, statusCode, body) {
@@ -8,11 +9,69 @@ function sendJson(response, statusCode, body) {
   response.writeHead(statusCode, {
     'content-type': 'application/json; charset=utf-8',
     'access-control-allow-origin': '*',
-    'access-control-allow-methods': 'GET, PUT, OPTIONS',
+    'access-control-allow-methods': 'GET, PUT, POST, OPTIONS',
     'access-control-allow-headers': 'content-type',
     'cache-control': 'no-store'
   });
   response.end(payload);
+}
+
+function isSupportedWakeUrl(value) {
+  try {
+    const parsed = new URL(String(value || '').trim());
+    return ['http:', 'https:', 'file:'].includes(parsed.protocol);
+  } catch (_error) {
+    return false;
+  }
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
+function appleScriptQuote(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function findCodexBinary() {
+  if (process.env.READLENS_CODEX_BIN) return process.env.READLENS_CODEX_BIN;
+  try {
+    return execFileSync('/bin/zsh', ['-lc', 'command -v codex'], { encoding: 'utf8' }).trim() || 'codex';
+  } catch (_error) {
+    return 'codex';
+  }
+}
+
+function buildCodexWakeCommand(url, options = {}) {
+  const cwd = options.cwd || path.resolve(__dirname, '..');
+  const codexBin = options.codexBin || findCodexBinary();
+  const prompt = [
+    '使用 readlens skill 总结这个链接：',
+    url,
+    '完成后把结果写入 ReadLens bridge，并打开或刷新原网页显示解读。'
+  ].join(' ');
+  return `cd ${shellQuote(cwd)} && ${shellQuote(codexBin)} ${shellQuote(prompt)}`;
+}
+
+function runAppleScript(script) {
+  return new Promise((resolve, reject) => {
+    execFile('/usr/bin/osascript', ['-e', script], (error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+}
+
+async function defaultWakeCodex({ url }, options = {}) {
+  const command = buildCodexWakeCommand(url, options);
+  const script = [
+    'tell application "Terminal"',
+    'activate',
+    `do script "${appleScriptQuote(command)}"`,
+    'end tell'
+  ].join('\n');
+  await runAppleScript(script);
+  return { ok: true, mode: 'terminal', command };
 }
 
 function readJsonBody(request) {
@@ -114,6 +173,7 @@ function createStore(options = {}) {
 
 function createBridgeServer(options = {}) {
   const store = options.store || createStore({ persistPath: options.persistPath });
+  const wakeCodex = options.wakeCodex || ((payload) => defaultWakeCodex(payload, options));
 
   return http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
@@ -144,6 +204,22 @@ function createBridgeServer(options = {}) {
       return;
     }
 
+    if (request.method === 'POST' && url.pathname === '/wake-codex') {
+      try {
+        const body = await readJsonBody(request);
+        const targetUrl = String(body.url || '').trim();
+        if (!isSupportedWakeUrl(targetUrl)) {
+          sendJson(response, 400, { ok: false, error: 'Unsupported URL. Only http, https, and file URLs can wake Codex.' });
+          return;
+        }
+        const result = await wakeCodex({ url: targetUrl });
+        sendJson(response, 200, { ok: true, ...result });
+      } catch (error) {
+        sendJson(response, 500, { ok: false, error: error.message });
+      }
+      return;
+    }
+
     if (request.method === 'GET' && url.pathname === '/latest') {
       const requestedUrl = url.searchParams.get('url') || '';
       const data = store.get(requestedUrl);
@@ -159,4 +235,4 @@ function createBridgeServer(options = {}) {
   });
 }
 
-module.exports = { createBridgeServer, createStore, canonicalizeUrl };
+module.exports = { createBridgeServer, createStore, canonicalizeUrl, buildCodexWakeCommand, defaultWakeCodex };

@@ -14,8 +14,10 @@
     detectedSummary: null,
     detectedUrl: '',
     detectTimer: null,
+    wakePollTimer: null,
     lastKnownHref: location.href,
-    pendingPointId: null
+    pendingPointId: null,
+    viewMode: 'map'
   };
 
   function getRequestedPointIdFromHash() {
@@ -152,15 +154,15 @@
     const launcher = document.createElement('button');
     launcher.type = 'button';
     launcher.className = 'agent-reader-launcher agent-reader-launcher-checking';
-    launcher.innerHTML = '<span class="agent-reader-launcher-dot"></span><span class="agent-reader-launcher-text">ReadLens</span>';
+    launcher.innerHTML = '<span class="agent-reader-orb-mark">R</span><span class="agent-reader-launcher-text">ReadLens</span>';
     launcher.title = '正在检测 ReadLens 解读...';
-    launcher.addEventListener('click', () => {
+    launcher.addEventListener('click', async () => {
       if (state.detectedSummary) {
         renderReader(state.detectedSummary, { focusPointId: state.pendingPointId });
         setLauncherStatus('rendered', `已渲染 ${state.detectedSummary.keyPoints.length} 个关键点`);
         return;
       }
-      detectSummaryForCurrentPage({ force: true, renderIfFound: true });
+      await wakeCodexForCurrentPage();
     });
     document.documentElement.append(launcher);
     state.launcher = launcher;
@@ -177,8 +179,10 @@
       checking: '正在检测 Agent Bridge...',
       ready: '检测到当前页面已有 Agent 解读，点击展开。',
       rendered: 'Agent 解读已渲染，点击重新打开。',
-      empty: '当前页面暂无 Agent 解读，点击重新检测。',
-      offline: 'Agent Bridge 未连接，点击重新检测。',
+      empty: '当前页面暂无 Agent 解读，点击唤醒 Codex。',
+      waking: '正在唤醒 Codex，请在 Terminal 中继续。',
+      waiting: 'Codex 已唤醒，等待解读写入。',
+      offline: 'Agent Bridge 未连接，请先启动 readlens serve。',
       error: 'ReadLens 检测失败，点击重试。'
     };
     launcher.title = titles[status] || label;
@@ -202,19 +206,57 @@
 
     const body = document.createElement('div');
     body.className = 'agent-reader-body';
-    const summaryTitle = document.createElement('h3');
-    summaryTitle.className = 'agent-reader-section-title';
-    summaryTitle.textContent = '总结';
+
+    const viewToggle = document.createElement('div');
+    viewToggle.className = 'agent-reader-view-toggle';
+    const mapTab = createButton('图谱', 'agent-reader-tab agent-reader-tab-active');
+    const textTab = createButton('文本', 'agent-reader-tab');
+    viewToggle.append(mapTab, textTab);
+
     const summaryText = document.createElement('p');
     summaryText.className = 'agent-reader-summary';
     summaryText.textContent = summary.summary;
+
+    const mapView = document.createElement('div');
+    mapView.className = 'agent-reader-view agent-reader-map';
+    const center = document.createElement('button');
+    center.type = 'button';
+    center.className = 'agent-reader-map-center';
+    center.innerHTML = '<span>总览</span>';
+    const centerText = document.createElement('p');
+    centerText.textContent = summary.summary;
+    center.append(centerText);
+    const mapPoints = document.createElement('div');
+    mapPoints.className = 'agent-reader-map-points';
+    mapView.append(center, mapPoints);
+
+    const textView = document.createElement('div');
+    textView.className = 'agent-reader-view agent-reader-text agent-reader-hidden';
     const pointsTitle = document.createElement('h3');
     pointsTitle.className = 'agent-reader-section-title';
     pointsTitle.textContent = '关键点';
-    body.append(summaryTitle, summaryText, pointsTitle);
+    textView.append(pointsTitle);
+
+    body.append(viewToggle, summaryText, mapView, textView);
 
     let unmatchedCount = 0;
     for (const point of summary.keyPoints) {
+      const matchedCount = (matchesByPoint.get(point.id) || []).length;
+      if (matchedCount === 0) unmatchedCount += 1;
+
+      const mapPoint = createButton('', 'agent-reader-map-point agent-reader-point');
+      mapPoint.dataset.agentReaderPointId = point.id;
+      const mapIndex = document.createElement('span');
+      mapIndex.className = 'agent-reader-map-index';
+      mapIndex.textContent = point.id.replace(/^point-/, '#');
+      const mapClaim = document.createElement('strong');
+      mapClaim.textContent = point.claim || '未命名关键点';
+      const mapMeta = document.createElement('small');
+      mapMeta.textContent = matchedCount > 0 ? `关联 ${matchedCount} 处原文` : '未匹配 quote';
+      mapPoint.append(mapIndex, mapClaim, mapMeta);
+      mapPoint.addEventListener('click', () => scrollToPoint(point.id));
+      mapPoints.append(mapPoint);
+
       const pointButton = createButton('', 'agent-reader-point');
       pointButton.dataset.agentReaderPointId = point.id;
       const claim = document.createElement('p');
@@ -223,22 +265,32 @@
       const explanation = document.createElement('p');
       explanation.className = 'agent-reader-explanation';
       explanation.textContent = point.explanation || '没有补充解释。';
-      const matchedCount = (matchesByPoint.get(point.id) || []).length;
       const meta = document.createElement('span');
       meta.className = 'agent-reader-meta';
       meta.textContent = matchedCount > 0 ? `已关联 ${matchedCount} 处原文` : '未匹配到原文引用';
-      if (matchedCount === 0) unmatchedCount += 1;
       pointButton.append(claim, explanation, meta);
       pointButton.addEventListener('click', () => scrollToPoint(point.id));
-      body.append(pointButton);
+      textView.append(pointButton);
     }
 
     if (unmatchedCount > 0) {
       const empty = document.createElement('p');
       empty.className = 'agent-reader-empty';
       empty.textContent = `${unmatchedCount} 个关键点没有在当前页面找到对应 quote。可以让 Agent 输出更短、更精确的原文句子。`;
-      body.append(empty);
+      textView.append(empty);
     }
+
+    function setViewMode(mode) {
+      state.viewMode = mode;
+      mapView.classList.toggle('agent-reader-hidden', mode !== 'map');
+      textView.classList.toggle('agent-reader-hidden', mode !== 'text');
+      mapTab.classList.toggle('agent-reader-tab-active', mode === 'map');
+      textTab.classList.toggle('agent-reader-tab-active', mode === 'text');
+    }
+
+    mapTab.addEventListener('click', () => setViewMode('map'));
+    textTab.addEventListener('click', () => setViewMode('text'));
+    setViewMode(state.viewMode);
 
     collapse.addEventListener('click', () => {
       panel.classList.toggle('agent-reader-collapsed');
@@ -249,6 +301,37 @@
     panel.append(header, body);
     document.documentElement.append(panel);
     state.panel = panel;
+  }
+
+  function scheduleWakePolling() {
+    if (state.wakePollTimer) clearInterval(state.wakePollTimer);
+    let attempts = 0;
+    state.wakePollTimer = setInterval(() => {
+      attempts += 1;
+      detectSummaryForCurrentPage({ force: true, renderIfFound: true, keepWaiting: true });
+      if (attempts >= 30 || state.detectedSummary) {
+        clearInterval(state.wakePollTimer);
+        state.wakePollTimer = null;
+      }
+    }, 3000);
+  }
+
+  async function wakeCodexForCurrentPage() {
+    if (!/^https?:|^file:/.test(location.protocol)) return;
+    setLauncherStatus('waking', '唤醒 Codex...');
+    try {
+      const response = await fetch(`${BRIDGE_BASE_URL}/wake-codex`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url: location.href })
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.ok) throw new Error(body.error || 'Codex wake failed');
+      setLauncherStatus('waiting', '已唤醒，等待解读');
+      scheduleWakePolling();
+    } catch (_error) {
+      setLauncherStatus('offline', 'Bridge 未连接');
+    }
   }
 
   function renderReader(payload, options = {}) {
@@ -289,7 +372,7 @@
       const result = await fetchSummaryForUrl(currentUrl);
       if (result.status === 'empty') {
         state.detectedSummary = null;
-        setLauncherStatus('empty', '暂无解读');
+        setLauncherStatus(options.keepWaiting ? 'waiting' : 'empty', options.keepWaiting ? '已唤醒，等待解读' : '暂无解读');
         if (state.panel) clearPageDecorations();
         return;
       }
