@@ -16,9 +16,12 @@
     detectedUrl: '',
     detectTimer: null,
     wakePollTimer: null,
+    loadingTimer: null,
     lastKnownHref: location.href,
     pendingPointId: null,
-    viewMode: 'map'
+    viewMode: 'map',
+    isInterpreting: false,
+    wakeStartedAt: 0
   };
 
   function getRequestedPointIdFromHash() {
@@ -194,9 +197,10 @@
     const launcher = document.createElement('button');
     launcher.type = 'button';
     launcher.className = 'agent-reader-launcher agent-reader-launcher-checking';
-    launcher.innerHTML = '<span class="agent-reader-orb-mark">R</span><span class="agent-reader-launcher-text">ReadLens</span>';
+    launcher.innerHTML = '<span class="agent-reader-orb-mark">R</span><span class="agent-reader-launcher-text">ReadLens</span><span class="agent-reader-launcher-loading-text" aria-live="polite"></span>';
     launcher.title = '正在检测 ReadLens 解读...';
     launcher.addEventListener('click', async () => {
+      if (state.isInterpreting) return;
       if (state.detectedSummary) {
         renderReader(state.detectedSummary, { focusPointId: state.pendingPointId });
         setLauncherStatus('rendered', `已渲染 ${state.detectedSummary.keyPoints.length} 个关键点`);
@@ -209,19 +213,58 @@
     return launcher;
   }
 
+  function formatElapsedSeconds(startedAt) {
+    const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = String(elapsed % 60).padStart(2, '0');
+    return `${minutes}:${seconds}`;
+  }
+
+  function stopLauncherLoadingTimer() {
+    if (!state.loadingTimer) return;
+    clearInterval(state.loadingTimer);
+    state.loadingTimer = null;
+  }
+
+  function updateLauncherLoadingText() {
+    const launcher = ensureLauncher();
+    const loadingText = launcher.querySelector('.agent-reader-launcher-loading-text');
+    if (!loadingText || !state.wakeStartedAt) return;
+    loadingText.textContent = `正在解读 ${formatElapsedSeconds(state.wakeStartedAt)}`;
+  }
+
+  function startLauncherLoadingTimer() {
+    state.isInterpreting = true;
+    if (!state.wakeStartedAt) state.wakeStartedAt = Date.now();
+    stopLauncherLoadingTimer();
+    updateLauncherLoadingText();
+    state.loadingTimer = setInterval(updateLauncherLoadingText, 1000);
+  }
+
   function setLauncherStatus(status, label) {
     const launcher = ensureLauncher();
+    const isLoadingStatus = status === 'waking' || status === 'waiting';
     launcher.className = `agent-reader-launcher agent-reader-launcher-${status}`;
     const text = launcher.querySelector('.agent-reader-launcher-text');
     if (text) text.textContent = label;
+
+    if (isLoadingStatus) {
+      startLauncherLoadingTimer();
+    } else {
+      state.isInterpreting = false;
+      state.wakeStartedAt = 0;
+      stopLauncherLoadingTimer();
+      const loadingText = launcher.querySelector('.agent-reader-launcher-loading-text');
+      if (loadingText) loadingText.textContent = '';
+    }
 
     const titles = {
       checking: '正在检测 Agent Bridge...',
       ready: '检测到当前页面已有 Agent 解读，点击展开。',
       rendered: 'Agent 解读已渲染，点击重新打开。',
-      empty: '当前页面暂无 Agent 解读，点击唤醒 Codex。',
-      waking: '正在唤醒 Codex，请在 Terminal 中继续。',
-      waiting: 'Codex 已唤醒，等待解读写入。',
+      empty: '当前页面暂无解读，点击解读此页。',
+      waking: '正在唤醒 Codex 解读此页...',
+      waiting: '正在解读此页，完成后会自动加载。',
       offline: 'Agent Bridge 未连接，请先启动 readlens serve。',
       error: 'ReadLens 检测失败，点击重试。'
     };
@@ -421,7 +464,7 @@
 
   async function wakeCodexForCurrentPage() {
     if (!/^https?:|^file:/.test(location.protocol)) return;
-    setLauncherStatus('waking', '唤醒 Codex...');
+    setLauncherStatus('waking', '正在解读');
     try {
       const response = await fetch(`${BRIDGE_BASE_URL}/wake-codex`, {
         method: 'POST',
@@ -430,7 +473,7 @@
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.ok) throw new Error(body.error || 'Codex wake failed');
-      setLauncherStatus('waiting', '已唤醒，等待解读');
+      setLauncherStatus('waiting', '正在解读');
       scheduleWakePolling();
     } catch (_error) {
       setLauncherStatus('offline', 'Bridge 未连接');
@@ -475,7 +518,11 @@
       const result = await fetchSummaryForUrl(currentUrl);
       if (result.status === 'empty') {
         state.detectedSummary = null;
-        setLauncherStatus(options.keepWaiting ? 'waiting' : 'empty', options.keepWaiting ? '已唤醒，等待解读' : '暂无解读');
+        if (options.keepWaiting) {
+          setLauncherStatus('waiting', '正在解读');
+        } else {
+          setLauncherStatus('empty', '解读此页');
+        }
         if (state.panel) clearPageDecorations();
         return;
       }
