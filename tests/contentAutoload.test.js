@@ -108,3 +108,12 @@ test('launcher state colors map to gray empty, blue interpreting, and green inte
   assert.match(contentCss, /\.agent-reader-launcher-waking,\s*\n\.agent-reader-launcher-waiting\s*\{[\s\S]*?background:\s*#1d4ed8;/, 'interpreting state should be clear blue');
   assert.match(contentCss, /\.agent-reader-launcher-ready,\s*\n\.agent-reader-launcher-rendered\s*\{[\s\S]*?background:\s*#047857;/, 'ready/rendered state should be green');
 });
+
+
+test('graph view lays out hierarchical points horizontally', () => {
+  assert.match(contentSource, /function\s+buildPointHierarchy\s*\(/, 'content script should build parent-child hierarchy from keyPoints');
+  assert.match(contentSource, /parentId/, 'content script should read optional parentId from keyPoints');
+  assert.match(contentSource, /agent-reader-outline-label/, 'text and map views should show outline labels like 2.1');
+  assert.match(contentSource, /depth\s*\*\s*150/, 'map x positions should move child nodes horizontally by depth');
+  assert.match(contentCss, /\.agent-reader-map-frame\s*\{[\s\S]*?overflow-x:\s*auto;/, 'wide horizontal maps should scroll instead of clipping');
+});

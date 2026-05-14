@@ -83,6 +83,7 @@ If the orb reports that the bridge is offline, start the bridge and click the or
   "keyPoints": [
     {
       "id": "point-1",
+      "parentId": "",
       "claim": "Key point in your words.",
       "explanation": "Why it matters or how to read it.",
       "evidence": [
@@ -100,7 +101,9 @@ If the orb reports that the bridge is offline, start the bridge and click the or
 
 - Quotes must be exact substrings from visible page text whenever possible.
 - Keep each quote short: one sentence or a distinctive phrase is best.
-- Prefer 3-6 key points.
+- Choose as many key points as the page genuinely needs; short pages may need 2-3, ordinary articles often need 4-5, and only complex long pages need 6+. Do not force a fixed count.
+- Use optional `parentId` to express hierarchy when a point supports or belongs under another point. For example, point `2.1` should be represented as a normal keyPoint whose `parentId` points to the parent keyPoint id, not by hard-coding numbering into the claim.
+- Keep top-level points focused on major ideas; put examples, subclaims, caveats, and implementation details under the relevant parent.
 - If a page is long, choose quotes from the sections that support the main claims.
 - If exact quotes are impossible because content is rendered dynamically or behind auth, explain the limitation and use Chrome/browser to inspect the page.
 

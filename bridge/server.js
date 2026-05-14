@@ -50,6 +50,7 @@ function buildCodexWakeCommand(url, options = {}) {
     url,
     '请直接完成解析并写入 ReadLens bridge。',
     '要求：读取页面内容，生成符合 ReadLens JSON contract 的 JSON，包含 url/title/summary/keyPoints/evidence.quote。',
+    '关键点数量按内容复杂度自然决定，不要固定凑 6 个；有从属关系时用 keyPoint.parentId 表示层级。',
     'quote 要尽量使用页面中的短原文，方便浏览器插件定位。',
     '完成后执行：readlens put -，把生成的 JSON 从 stdin 写入本地 bridge。',
     '如果 readlens 命令不可用，请使用当前仓库的 bin/readlens put -。'

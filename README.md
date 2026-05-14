@@ -104,6 +104,7 @@ Or paste JSON manually in the extension popup and click **渲染到页面**.
   "keyPoints": [
     {
       "id": "point-1",
+      "parentId": "",
       "claim": "A key point",
       "explanation": "Why it matters",
       "evidence": [
@@ -117,7 +118,7 @@ Or paste JSON manually in the extension popup and click **渲染到页面**.
 }
 ```
 
-For the MVP, `quote` should be short and close to exact source text. The plugin normalizes whitespace, but it does not yet perform semantic fuzzy matching.
+For the MVP, `quote` should be short and close to exact source text. The plugin normalizes whitespace, but it does not yet perform semantic fuzzy matching. `parentId` is optional; use it when a key point is a child of another point so the extension can render a horizontal hierarchy such as `2 -> 2.1 -> 2.2`.
 
 
 ## Agent reply jump links

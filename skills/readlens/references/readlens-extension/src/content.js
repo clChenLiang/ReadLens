@@ -191,6 +191,47 @@
     tooltip.append(title, detail, quote, meta);
   }
 
+  function buildPointHierarchy(points) {
+    const nodes = points.map((point, index) => ({
+      point,
+      index,
+      parent: null,
+      children: [],
+      depth: 0,
+      row: 0,
+      outline: '',
+      x: 0,
+      y: 0
+    }));
+    const byId = new Map(nodes.map((node) => [node.point.id, node]));
+    const roots = [];
+
+    for (const node of nodes) {
+      const parentId = node.point.parentId;
+      const parent = parentId && parentId !== node.point.id ? byId.get(parentId) : null;
+      if (parent) {
+        node.parent = parent;
+        parent.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+
+    const ordered = [];
+    function visit(node, depth, outline) {
+      node.depth = depth;
+      node.outline = outline;
+      node.row = ordered.length;
+      node.x = 170 + depth * 150;
+      node.y = 82 + node.row * 78;
+      ordered.push(node);
+      node.children.forEach((child, childIndex) => visit(child, depth + 1, `${outline}.${childIndex + 1}`));
+    }
+
+    roots.forEach((root, rootIndex) => visit(root, 0, `${rootIndex + 1}`));
+    return { nodes, roots, ordered };
+  }
+
   function ensureLauncher() {
     if (state.launcher && state.launcher.isConnected) return state.launcher;
 
@@ -306,7 +347,6 @@
     mapFrame.className = 'agent-reader-map-frame';
     const mapSvg = document.createElementNS(SVG_NS, 'svg');
     mapSvg.setAttribute('class', 'agent-reader-map-svg');
-    mapSvg.setAttribute('viewBox', '0 0 380 320');
     mapSvg.setAttribute('role', 'img');
     mapSvg.setAttribute('aria-label', 'ReadLens knowledge map');
     const mapLinks = createSvgElement('g', { class: 'agent-reader-map-links' });
@@ -326,8 +366,12 @@
 
     body.append(viewToggle, summaryText, mapView, textView);
 
+    const hierarchy = buildPointHierarchy(summary.keyPoints);
+    const nodeByPointId = new Map(hierarchy.nodes.map((node) => [node.point.id, node]));
+
     let unmatchedCount = 0;
     for (const point of summary.keyPoints) {
+      const hierarchyNode = nodeByPointId.get(point.id);
       const matchedCount = (matchesByPoint.get(point.id) || []).length;
       if (matchedCount === 0) unmatchedCount += 1;
 
@@ -335,7 +379,12 @@
       pointButton.dataset.agentReaderPointId = point.id;
       const claim = document.createElement('p');
       claim.className = 'agent-reader-claim';
-      claim.textContent = point.claim || '未命名关键点';
+      const outlineLabel = document.createElement('span');
+      outlineLabel.className = 'agent-reader-outline-label';
+      outlineLabel.textContent = hierarchyNode ? hierarchyNode.outline : '';
+      const claimText = document.createElement('span');
+      claimText.textContent = point.claim || '未命名关键点';
+      claim.append(outlineLabel, claimText);
       const explanation = document.createElement('p');
       explanation.className = 'agent-reader-explanation';
       explanation.textContent = point.explanation || '没有补充解释。';
@@ -347,12 +396,21 @@
       textView.append(pointButton);
     }
 
-    const centerNode = createSvgElement('g', { class: 'agent-reader-map-overview', tabindex: '0' });
-    const centerHalo = createSvgElement('circle', { cx: 190, cy: 74, r: 52, class: 'agent-reader-map-halo' });
-    const centerCircle = createSvgElement('circle', { cx: 190, cy: 74, r: 43, class: 'agent-reader-map-center-node' });
-    const centerLabel = createSvgElement('text', { x: 190, y: 68, 'text-anchor': 'middle', class: 'agent-reader-map-center-label' });
+    const rows = Math.max(hierarchy.ordered.length, 1);
+    const maxDepth = hierarchy.ordered.reduce((depth, node) => Math.max(depth, node.depth), 0);
+    const mapWidth = Math.max(520, 270 + maxDepth * 150);
+    const mapHeight = Math.max(250, 120 + rows * 78);
+    const centerX = 72;
+    const centerY = Math.max(88, mapHeight / 2);
+    mapSvg.setAttribute('viewBox', `0 0 ${mapWidth} ${mapHeight}`);
+    mapSvg.style.minWidth = `${mapWidth}px`;
+
+    const centerNode = createSvgElement('g', { class: 'agent-reader-map-overview', tabindex: '0', transform: `translate(${centerX}, ${centerY})` });
+    const centerHalo = createSvgElement('circle', { cx: 0, cy: 0, r: 50, class: 'agent-reader-map-halo' });
+    const centerCircle = createSvgElement('circle', { cx: 0, cy: 0, r: 42, class: 'agent-reader-map-center-node' });
+    const centerLabel = createSvgElement('text', { x: 0, y: -6, 'text-anchor': 'middle', class: 'agent-reader-map-center-label' });
     centerLabel.textContent = '总览';
-    const centerHint = createSvgElement('text', { x: 190, y: 88, 'text-anchor': 'middle', class: 'agent-reader-map-center-hint' });
+    const centerHint = createSvgElement('text', { x: 0, y: 15, 'text-anchor': 'middle', class: 'agent-reader-map-center-hint' });
     centerHint.textContent = `${summary.keyPoints.length} 个关键点`;
     centerNode.append(centerHalo, centerCircle, centerLabel, centerHint);
     centerNode.addEventListener('mouseenter', (event) => {
@@ -362,7 +420,7 @@
       const detail = document.createElement('p');
       detail.textContent = summary.summary || '暂无总览。';
       const meta = document.createElement('span');
-      meta.textContent = '围绕总览展开关键论点';
+      meta.textContent = '向右展开主要论点与从属关系';
       mapTooltip.append(title, detail, meta);
       mapTooltip.classList.remove('agent-reader-tooltip-hidden');
       positionMapTooltip(event, mapTooltip, mapFrame);
@@ -371,27 +429,28 @@
     centerNode.addEventListener('mouseleave', () => mapTooltip.classList.add('agent-reader-tooltip-hidden'));
     mapNodes.append(centerNode);
 
-    const pointCount = Math.max(summary.keyPoints.length, 1);
-    summary.keyPoints.forEach((point, index) => {
+    hierarchy.ordered.forEach((hierarchyNode) => {
+      const point = hierarchyNode.point;
       const matchedCount = (matchesByPoint.get(point.id) || []).length;
-      const angle = Math.PI * (0.18 + (0.64 * index) / Math.max(pointCount - 1, 1));
-      const x = 190 + Math.cos(angle) * 148;
-      const y = 100 + Math.sin(angle) * 154;
+      const x = hierarchyNode.x;
+      const y = hierarchyNode.y;
+      const parentX = hierarchyNode.parent ? hierarchyNode.parent.x : centerX;
+      const parentY = hierarchyNode.parent ? hierarchyNode.parent.y : centerY;
       const link = createSvgElement('path', {
         class: `agent-reader-map-link ${matchedCount > 0 ? 'agent-reader-map-link-matched' : 'agent-reader-map-link-unmatched'}`,
-        d: `M 190 122 C 190 168, ${x} 146, ${x} ${y - 28}`
+        d: `M ${parentX + 38} ${parentY} C ${parentX + 84} ${parentY}, ${x - 84} ${y}, ${x - 38} ${y}`
       });
       mapLinks.append(link);
 
       const node = createSvgElement('g', {
-        class: `agent-reader-map-node agent-reader-point ${matchedCount > 0 ? 'agent-reader-map-node-matched' : 'agent-reader-map-node-unmatched'}`,
+        class: `agent-reader-map-node agent-reader-point ${hierarchyNode.children.length ? 'agent-reader-map-node-parent' : 'agent-reader-map-node-leaf'} ${matchedCount > 0 ? 'agent-reader-map-node-matched' : 'agent-reader-map-node-unmatched'}`,
         tabindex: '0',
         'data-agent-reader-point-id': point.id,
         transform: `translate(${x}, ${y})`
       });
       const bubble = createSvgElement('circle', { cx: 0, cy: 0, r: 30 });
       const indexText = createSvgElement('text', { x: 0, y: -4, 'text-anchor': 'middle', class: 'agent-reader-map-node-index' });
-      indexText.textContent = point.id.replace(/^point-/, '#');
+      indexText.textContent = hierarchyNode.outline;
       const metaText = createSvgElement('text', { x: 0, y: 14, 'text-anchor': 'middle', class: 'agent-reader-map-node-meta' });
       metaText.textContent = matchedCount > 0 ? `${matchedCount} 引用` : '未匹配';
       const label = createSvgElement('text', {

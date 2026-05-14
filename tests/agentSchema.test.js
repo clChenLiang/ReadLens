@@ -24,6 +24,7 @@ test('normalizes a valid agent summary', () => {
   assert.deepEqual(result.data.aliases, ['https://example.com/a?utm_source=test', 'https://example.com/a#section']);
   assert.deepEqual(result.data.keyPoints[0], {
     id: 'custom-id',
+    parentId: '',
     claim: 'Claim one',
     explanation: 'Explanation one',
     evidence: [
@@ -55,4 +56,19 @@ test('adds stable ids and ignores blank evidence', () => {
   assert.equal(result.data.keyPoints[0].id, 'point-1');
   assert.equal(result.data.keyPoints[0].evidence.length, 1);
   assert.equal(result.data.keyPoints[0].explanation, '');
+});
+
+
+test('preserves optional key point hierarchy parent ids', () => {
+  const result = validateAgentSummary({
+    summary: 'Summary',
+    keyPoints: [
+      { id: 'point-1', claim: 'Parent point' },
+      { id: 'point-1-1', parentId: ' point-1 ', claim: 'Child point' }
+    ]
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.keyPoints[0].parentId, '');
+  assert.equal(result.data.keyPoints[1].parentId, 'point-1');
 });

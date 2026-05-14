@@ -55,6 +55,7 @@
     const keyPoints = Array.isArray(input.keyPoints)
       ? input.keyPoints.map((point, index) => ({
           id: cleanString(point && point.id) || `point-${index + 1}`,
+          parentId: cleanString(point && point.parentId),
           claim: cleanString(point && point.claim),
           explanation: cleanString(point && point.explanation),
           evidence: normalizeEvidence(point && point.evidence)

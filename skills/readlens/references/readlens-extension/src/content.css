@@ -311,7 +311,8 @@
 .agent-reader-map-frame {
   position: relative;
   min-height: 330px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid rgba(199, 210, 254, 0.62);
   border-radius: 22px;
   background:
@@ -323,7 +324,8 @@
 .agent-reader-map-svg {
   display: block;
   width: 100%;
-  height: 330px;
+  min-width: 520px;
+  height: 360px;
 }
 
 .agent-reader-map-link {
@@ -332,6 +334,15 @@
   stroke-width: 2.5;
   stroke-linecap: round;
   stroke-dasharray: 7 7;
+}
+
+.agent-reader-outline-label {
+  flex: 0 0 auto;
+  display: inline-flex;
+  min-width: 28px;
+  margin-right: 8px;
+  color: #4f46e5;
+  font-weight: 900;
 }
 
 .agent-reader-map-link-matched {
@@ -563,6 +574,8 @@ button.agent-reader-point.agent-reader-point-active {
 }
 
 .agent-reader-claim {
+  display: flex;
+  align-items: baseline;
   margin: 0 0 6px;
   font-size: 14px;
   font-weight: 850;
