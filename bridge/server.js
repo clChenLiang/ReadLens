@@ -127,6 +127,8 @@ function canonicalizeUrl(value) {
 function createStore(options = {}) {
   const summariesByUrl = new Map();
   const canonicalUrlIndex = new Map();
+  const pendingByUrl = new Map();
+  const canonicalPendingIndex = new Map();
   let latest = null;
   const persistPath = options.persistPath ? path.resolve(options.persistPath) : null;
 
@@ -139,12 +141,47 @@ function createStore(options = {}) {
     }
   }
 
+  function indexPending(task) {
+    if (!task || !task.url) return;
+    pendingByUrl.set(task.url, task);
+    const canonical = canonicalizeUrl(task.url);
+    if (canonical) canonicalPendingIndex.set(canonical, task);
+  }
+
+  function removePendingForUrl(url) {
+    if (!url) return;
+    const canonical = canonicalizeUrl(url);
+    const task = pendingByUrl.get(url) || (canonical ? canonicalPendingIndex.get(canonical) : null);
+    pendingByUrl.delete(url);
+    if (canonical) canonicalPendingIndex.delete(canonical);
+    if (!task) return;
+    for (const [key, value] of Array.from(pendingByUrl.entries())) {
+      if (value === task) pendingByUrl.delete(key);
+    }
+    for (const [key, value] of Array.from(canonicalPendingIndex.entries())) {
+      if (value === task) canonicalPendingIndex.delete(key);
+    }
+  }
+
+  function clearPendingForSummary(summary) {
+    const urls = [summary.url, ...(summary.aliases || [])].filter(Boolean);
+    urls.forEach(removePendingForUrl);
+  }
+
   function load() {
     if (!persistPath || !fs.existsSync(persistPath)) return;
     const raw = JSON.parse(fs.readFileSync(persistPath, 'utf8'));
     for (const item of raw.summaries || []) {
       const validation = validateAgentSummary(item);
       if (validation.ok && validation.data.url) indexSummary(validation.data);
+    }
+    for (const item of raw.pending || []) {
+      if (!item || !isSupportedWakeUrl(item.url)) continue;
+      indexPending({
+        ...item,
+        url: String(item.url),
+        startedAt: Number(item.startedAt) || Date.now()
+      });
     }
     latest = raw.latest ? validateAgentSummary(raw.latest).data : null;
   }
@@ -154,13 +191,17 @@ function createStore(options = {}) {
     fs.mkdirSync(path.dirname(persistPath), { recursive: true });
     fs.writeFileSync(persistPath, JSON.stringify({
       latest,
-      summaries: Array.from(summariesByUrl.values())
+      pending: Array.from(new Set(pendingByUrl.values())),
+      summaries: Array.from(new Set(summariesByUrl.values()))
     }, null, 2));
   }
 
   function put(summary) {
     latest = summary;
-    if (summary.url) indexSummary(summary);
+    if (summary.url) {
+      clearPendingForSummary(summary);
+      indexSummary(summary);
+    }
     save();
   }
 
@@ -172,8 +213,28 @@ function createStore(options = {}) {
     return null;
   }
 
+  function markPending(url, metadata = {}) {
+    const task = {
+      url,
+      startedAt: metadata.startedAt || Date.now()
+    };
+    if (metadata.mode) task.mode = metadata.mode;
+    if (metadata.command) task.command = metadata.command;
+    removePendingForUrl(url);
+    indexPending(task);
+    save();
+    return task;
+  }
+
+  function getPending(url) {
+    if (url && pendingByUrl.has(url)) return pendingByUrl.get(url);
+    const canonical = canonicalizeUrl(url);
+    if (canonical && canonicalPendingIndex.has(canonical)) return canonicalPendingIndex.get(canonical);
+    return null;
+  }
+
   load();
-  return { put, get };
+  return { put, get, markPending, getPending };
 }
 
 function createBridgeServer(options = {}) {
@@ -218,10 +279,31 @@ function createBridgeServer(options = {}) {
           return;
         }
         const result = await wakeCodex({ url: targetUrl });
-        sendJson(response, 200, { ok: true, ...result });
+        const task = store.markPending(targetUrl, {
+          startedAt: Date.now(),
+          mode: result && result.mode,
+          command: result && result.command
+        });
+        sendJson(response, 200, { ok: true, ...result, task });
       } catch (error) {
         sendJson(response, 500, { ok: false, error: error.message });
       }
+      return;
+    }
+
+    if (request.method === 'GET' && url.pathname === '/status') {
+      const requestedUrl = url.searchParams.get('url') || '';
+      const data = store.get(requestedUrl);
+      if (data) {
+        sendJson(response, 200, { ok: true, state: 'ready', data });
+        return;
+      }
+      const task = store.getPending(requestedUrl);
+      if (task) {
+        sendJson(response, 200, { ok: true, state: 'pending', task });
+        return;
+      }
+      sendJson(response, 200, { ok: true, state: 'empty' });
       return;
     }
 

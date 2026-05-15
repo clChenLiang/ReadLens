@@ -5,6 +5,9 @@
   const { validateAgentSummary } = globalThis.AgentReaderSchema;
   const { findQuoteInText } = globalThis.AgentReaderQuoteMatcher;
   const BRIDGE_BASE_URL = 'http://127.0.0.1:8765';
+  const SERVE_COMMAND = 'readlens serve';
+  const POLL_INTERVAL_MS = 1000;
+  const MAX_WAKE_POLL_ATTEMPTS = 180;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const state = {
     launcher: null,
@@ -21,7 +24,9 @@
     pendingPointId: null,
     viewMode: 'map',
     isInterpreting: false,
-    wakeStartedAt: 0
+    wakeStartedAt: 0,
+    launcherStatus: '',
+    bridgeGuide: null
   };
 
   function getRequestedPointIdFromHash() {
@@ -242,6 +247,10 @@
     launcher.title = '正在检测 ReadLens 解读...';
     launcher.addEventListener('click', async () => {
       if (state.isInterpreting) return;
+      if (state.launcherStatus === 'offline') {
+        showBridgeOfflineGuide();
+        return;
+      }
       if (state.detectedSummary) {
         renderReader(state.detectedSummary, { focusPointId: state.pendingPointId });
         setLauncherStatus('rendered', `已渲染 ${state.detectedSummary.keyPoints.length} 个关键点`);
@@ -277,15 +286,18 @@
   function startLauncherLoadingTimer() {
     state.isInterpreting = true;
     if (!state.wakeStartedAt) state.wakeStartedAt = Date.now();
-    stopLauncherLoadingTimer();
     updateLauncherLoadingText();
+    if (state.loadingTimer) return;
     state.loadingTimer = setInterval(updateLauncherLoadingText, 1000);
   }
 
   function setLauncherStatus(status, label) {
     const launcher = ensureLauncher();
     const isLoadingStatus = status === 'waking' || status === 'waiting';
-    launcher.className = `agent-reader-launcher agent-reader-launcher-${status}`;
+    if (state.launcherStatus !== status) {
+      launcher.className = `agent-reader-launcher agent-reader-launcher-${status}`;
+    }
+    state.launcherStatus = status;
     const text = launcher.querySelector('.agent-reader-launcher-text');
     if (text) text.textContent = label;
 
@@ -310,6 +322,50 @@
       error: 'ReadLens 检测失败，点击重试。'
     };
     launcher.title = titles[status] || label;
+  }
+
+  function showBridgeOfflineGuide() {
+    if (state.bridgeGuide && state.bridgeGuide.isConnected) {
+      state.bridgeGuide.classList.remove('agent-reader-hidden');
+      return;
+    }
+
+    const guide = document.createElement('aside');
+    guide.className = 'agent-reader-bridge-guide';
+
+    const header = document.createElement('div');
+    header.className = 'agent-reader-bridge-guide-header';
+    const title = document.createElement('strong');
+    title.textContent = '启动 ReadLens Bridge';
+    const close = createButton('×', 'agent-reader-bridge-guide-close');
+    close.setAttribute('aria-label', '关闭启动指引');
+    close.addEventListener('click', () => guide.remove());
+    header.append(title, close);
+
+    const description = document.createElement('p');
+    description.textContent = '浏览器插件无法直接启动本地 Codex/Node 服务。请在终端运行下面命令，启动后本页会自动检测并可继续解读。';
+
+    const command = document.createElement('code');
+    command.className = 'agent-reader-bridge-command';
+    command.textContent = SERVE_COMMAND;
+
+    const copy = createButton('复制命令', 'agent-reader-bridge-copy');
+    copy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(SERVE_COMMAND);
+        copy.textContent = '已复制';
+      } catch (_error) {
+        copy.textContent = '复制失败';
+      }
+      setTimeout(() => { copy.textContent = '复制命令'; }, 1400);
+    });
+
+    const fallback = document.createElement('small');
+    fallback.textContent = '如果 readlens 不可用，请在 ReadLens 目录尝试 ./bin/readlens serve 或 bin/agent-reader serve。';
+
+    guide.append(header, description, command, copy, fallback);
+    document.documentElement.append(guide);
+    state.bridgeGuide = guide;
   }
 
   function renderPanel(summary, matchesByPoint) {
@@ -509,16 +565,16 @@
   }
 
   function scheduleWakePolling() {
-    if (state.wakePollTimer) clearInterval(state.wakePollTimer);
+    if (state.wakePollTimer) return;
     let attempts = 0;
     state.wakePollTimer = setInterval(() => {
       attempts += 1;
       detectSummaryForCurrentPage({ force: true, renderIfFound: true, keepWaiting: true });
-      if (attempts >= 30 || state.detectedSummary) {
+      if (attempts >= MAX_WAKE_POLL_ATTEMPTS || state.detectedSummary) {
         clearInterval(state.wakePollTimer);
         state.wakePollTimer = null;
       }
-    }, 3000);
+    }, POLL_INTERVAL_MS);
   }
 
   async function wakeCodexForCurrentPage() {
@@ -532,6 +588,7 @@
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.ok) throw new Error(body.error || 'Codex wake failed');
+      state.wakeStartedAt = body.task && body.task.startedAt ? body.task.startedAt : Date.now();
       setLauncherStatus('waiting', '正在解读');
       scheduleWakePolling();
     } catch (_error) {
@@ -558,11 +615,10 @@
   }
 
   async function fetchSummaryForUrl(url) {
-    const response = await fetch(`${BRIDGE_BASE_URL}/latest?url=${encodeURIComponent(url)}`);
-    if (response.status === 404) return { status: 'empty', data: null };
+    const response = await fetch(`${BRIDGE_BASE_URL}/status?url=${encodeURIComponent(url)}`);
     const body = await response.json();
     if (!response.ok || !body.ok) return { status: 'error', data: null };
-    return { status: 'ready', data: body.data };
+    return { status: body.state || 'empty', data: body.data || null, task: body.task || null };
   }
 
   async function detectSummaryForCurrentPage(options = {}) {
@@ -575,6 +631,13 @@
 
     try {
       const result = await fetchSummaryForUrl(currentUrl);
+      if (result.status === 'pending') {
+        state.detectedSummary = null;
+        state.wakeStartedAt = result.task.startedAt;
+        setLauncherStatus('waiting', '正在解读');
+        scheduleWakePolling();
+        return;
+      }
       if (result.status === 'empty') {
         state.detectedSummary = null;
         if (options.keepWaiting) {

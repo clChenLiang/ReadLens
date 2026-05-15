@@ -117,3 +117,18 @@ test('graph view lays out hierarchical points horizontally', () => {
   assert.match(contentSource, /depth\s*\*\s*150/, 'map x positions should move child nodes horizontally by depth');
   assert.match(contentCss, /\.agent-reader-map-frame\s*\{[\s\S]*?overflow-x:\s*auto;/, 'wide horizontal maps should scroll instead of clipping');
 });
+
+test('content script restores pending interpretation state after page refresh', () => {
+  assert.match(contentSource, /fetch\(`\$\{BRIDGE_BASE_URL\}\/status\?url=/, 'content script should query bridge status, not only latest summary');
+  assert.match(contentSource, /result\.status === 'pending'/, 'detect flow should recognize pending status');
+  assert.match(contentSource, /state\.wakeStartedAt\s*=\s*result\.task\.startedAt/, 'pending status should restore the original elapsed timer start');
+  assert.match(contentSource, /scheduleWakePolling\(\)/, 'pending status should resume polling after refresh');
+});
+
+test('offline launcher opens a start-service guide with copyable serve command', () => {
+  assert.match(contentSource, /function\s+showBridgeOfflineGuide\s*\(/, 'content script should render a bridge startup guide');
+  assert.match(contentSource, /readlens serve/, 'startup guide should tell users the command to start the bridge');
+  assert.match(contentSource, /navigator\.clipboard\.writeText/, 'startup guide should support copying the serve command');
+  assert.match(contentSource, /if \(state\.launcherStatus === 'offline'\) \{\s*showBridgeOfflineGuide\(\);\s*return;\s*\}/, 'clicking offline launcher should open the guide instead of trying wake-codex again');
+  assert.match(contentCss, /agent-reader-bridge-guide/, 'CSS should style the startup guide panel');
+});

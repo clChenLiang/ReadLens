@@ -194,6 +194,12 @@ async function summarizeCommand(input, port, shouldOpen, aliases) {
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
+
+  if (command === '-h' || command === '--help') {
+    usage();
+    return;
+  }
+
   const port = Number(readFlag(args, '--port', DEFAULT_PORT));
 
   if (command === 'serve') {

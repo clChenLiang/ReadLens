@@ -175,3 +175,38 @@ test('Codex wake command runs a non-interactive readlens document parse by defau
   assert.match(command, /使用 readlens skill 总结这个链接/, 'wake prompt should explicitly invoke the readlens skill');
   assert.match(command, /readlens put -/, 'wake prompt should instruct Codex to write bridge-compatible JSON');
 });
+
+test('GET /status reports pending after wake and ready after summary arrives', async () => {
+  await withServer(async (baseUrl) => {
+    const targetUrl = 'https://example.com/pending-article';
+    const wakeResponse = await fetch(`${baseUrl}/wake-codex`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: targetUrl })
+    });
+    assert.equal(wakeResponse.status, 200);
+
+    const pendingResponse = await fetch(`${baseUrl}/status?url=${encodeURIComponent(`${targetUrl}?utm_source=news#section`)}`);
+    assert.equal(pendingResponse.status, 200);
+    const pendingBody = await pendingResponse.json();
+    assert.equal(pendingBody.ok, true);
+    assert.equal(pendingBody.state, 'pending');
+    assert.equal(pendingBody.task.url, targetUrl);
+    assert.equal(typeof pendingBody.task.startedAt, 'number');
+
+    await fetch(`${baseUrl}/summary`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(sampleSummary(targetUrl))
+    });
+
+    const readyResponse = await fetch(`${baseUrl}/status?url=${encodeURIComponent(targetUrl)}`);
+    assert.equal(readyResponse.status, 200);
+    const readyBody = await readyResponse.json();
+    assert.equal(readyBody.ok, true);
+    assert.equal(readyBody.state, 'ready');
+    assert.equal(readyBody.data.url, targetUrl);
+  }, {
+    wakeCodex: async ({ url }) => ({ ok: true, mode: 'terminal', command: `codex ${url}` })
+  });
+});

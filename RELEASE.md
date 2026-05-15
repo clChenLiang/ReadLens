@@ -18,11 +18,12 @@ ReadLens connects an agent-generated page interpretation with the original webpa
    - Enable Developer mode.
    - Click Load unpacked.
    - Select the package's `extension/` directory.
-3. Start using the CLI:
+3. Install the CLI aliases and start using ReadLens:
 
 ```bash
 cd readlens-0.1.0
-bin/readlens summarize https://example.com/article
+scripts/install.sh
+readlens summarize https://example.com/article
 ```
 
 ## Install the skill package

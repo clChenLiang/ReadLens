@@ -606,3 +606,116 @@ button.agent-reader-point.agent-reader-point-active {
   font-size: 13px;
   line-height: 1.5;
 }
+
+.agent-reader-launcher-waking,
+.agent-reader-launcher-waiting {
+  width: auto;
+  min-width: 190px;
+  max-width: min(320px, calc(100vw - 44px));
+  padding: 0 16px;
+}
+
+.agent-reader-launcher-waking .agent-reader-launcher-text,
+.agent-reader-launcher-waiting .agent-reader-launcher-text {
+  display: none;
+}
+
+.agent-reader-launcher-waking .agent-reader-launcher-loading-text,
+.agent-reader-launcher-waiting .agent-reader-launcher-loading-text {
+  display: inline;
+  width: auto;
+  max-width: 250px;
+  opacity: 1;
+  color: #eff6ff;
+}
+
+.agent-reader-bridge-guide {
+  all: initial;
+  position: fixed;
+  z-index: 2147483647;
+  top: 152px;
+  right: 22px;
+  width: min(340px, calc(100vw - 44px));
+  box-sizing: border-box;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(226, 232, 240, 0.95), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  color: #172033;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.24);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  backdrop-filter: blur(16px);
+}
+
+.agent-reader-bridge-guide * {
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.agent-reader-bridge-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.agent-reader-bridge-guide-header strong {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.agent-reader-bridge-guide-close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.agent-reader-bridge-guide p {
+  margin: 0 0 12px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.agent-reader-bridge-command {
+  display: block;
+  margin: 0 0 10px;
+  padding: 11px 12px;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #e0f2fe;
+  font: 800 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  user-select: all;
+}
+
+.agent-reader-bridge-copy {
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #334155;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.agent-reader-bridge-guide small {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}

@@ -10,6 +10,29 @@ readlens summarize <url> -> bridge stores summary -> browser opens URL -> extens
 
 The current summarizer is an MVP heuristic extractor. It fetches or reads the page, extracts visible text, creates quote-linked key points, and writes them into the local bridge. Later this command can be replaced by a real Agent/AI summarizer while keeping the same bridge and extension contract.
 
+
+## Install the CLI alias
+
+Install global command aliases into `$HOME/bin` and add a managed shell rc block:
+
+```bash
+scripts/install.sh
+```
+
+After restarting the shell, these commands work from any directory:
+
+```bash
+readlens serve
+readlens stop
+readlens summarize https://example.com/article
+```
+
+If you only want symlinks without editing shell rc files:
+
+```bash
+scripts/install.sh --bin-dir "$HOME/bin" --no-shell-rc
+```
+
 ## Install the extension
 
 1. Open `chrome://extensions/`.
@@ -26,13 +49,13 @@ The current summarizer is an MVP heuristic extractor. It fetches or reads the pa
 Summarize and open a URL. If the local bridge is not running, this command starts it automatically in the background:
 
 ```bash
-bin/readlens summarize fixtures/sample-article.html
+readlens summarize fixtures/sample-article.html
 ```
 
 For a remote article:
 
 ```bash
-bin/readlens summarize https://example.com/article
+readlens summarize https://example.com/article
 ```
 
 What happens:
@@ -48,12 +71,12 @@ What happens:
 
 The floating orb stays in the top-right corner, expands on hover, and uses color to show states: checking, bridge offline, no summary, waking Codex, waiting for a result, summary ready, and rendered.
 
-When the current page has no stored interpretation, click the orb to ask the local bridge to wake Codex in Terminal with a `readlens` skill prompt for the current URL. Keep `bin/readlens serve` running so the extension can call the local bridge. After Codex writes the summary back with `readlens put -`, the extension polls and renders it automatically.
+When the current page has no stored interpretation, click the orb to ask the local bridge to wake Codex in Terminal with a `readlens` skill prompt for the current URL. Keep `readlens serve` running so the extension can call the local bridge. After Codex writes the summary back with `readlens put -`, the extension polls and renders it automatically.
 
 If the readable page URL differs from the URL you entered, store the entered URL as an alias:
 
 ```bash
-bin/readlens summarize https://x.com/RobinSeun/article/2054139315052310724 \
+readlens summarize https://x.com/RobinSeun/article/2054139315052310724 \
   --alias https://x.com/RobinSeun/status/2054139315052310724
 ```
 
@@ -62,19 +85,19 @@ The bridge also ignores URL hashes, common tracking parameters such as `utm_*`, 
 You can still run the bridge manually if you want foreground logs:
 
 ```bash
-bin/readlens serve
+readlens serve
 ```
 
 Stop the local bridge when needed:
 
 ```bash
-bin/readlens stop
+readlens stop
 ```
 
 Use `--no-open` if you only want to generate and store the summary:
 
 ```bash
-bin/readlens summarize fixtures/sample-article.html --no-open
+readlens summarize fixtures/sample-article.html --no-open
 ```
 
 ## Manual workflows
@@ -82,13 +105,13 @@ bin/readlens summarize fixtures/sample-article.html --no-open
 Push an existing Agent JSON file into the bridge:
 
 ```bash
-bin/readlens put fixtures/sample-agent-summary.json
+readlens put fixtures/sample-agent-summary.json
 ```
 
 Get the latest summary for a URL:
 
 ```bash
-bin/readlens get "file:///absolute/path/to/readlens/fixtures/sample-article.html"
+readlens get "file:///absolute/path/to/readlens/fixtures/sample-article.html"
 ```
 
 Or paste JSON manually in the extension popup and click **渲染到页面**.
